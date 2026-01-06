@@ -1,0 +1,46 @@
+# Binaries
+gateway
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go
+*.o
+*.a
+*.so
+vendor/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Coverage
+coverage.out
+coverage.html
+*.coverprofile
+
+# Logs
+*.log
+
+# Build
+dist/
+build/
+
+# Testing
+test-output.txt

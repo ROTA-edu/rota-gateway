@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rota-gateway
+  namespace: rota
+  labels:
+    app: rota-gateway
+    tier: infrastructure
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: rota-gateway
+  template:
+    metadata:
+      labels:
+        app: rota-gateway
+        tier: infrastructure
+    spec:
+      containers:
+      - name: gateway
+        image: ghcr.io/rota-edu/rota-gateway:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8080"
+        - name: ENV
+          value: "production"
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: rota-gateway-secrets
+              key: google-client-id
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: rota-gateway-secrets
+              key: google-client-secret
+        - name: GOOGLE_REDIRECT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: rota-gateway-config
+              key: google-redirect-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: rota-gateway-secrets
+              key: jwt-secret
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: rota-gateway-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: rota-gateway-secrets
+              key: redis-url
+        - name: PLATFORM_URL
+          valueFrom:
+            configMapKeyRef:
+              name: rota-gateway-config
+              key: platform-url
+        - name: ATLAS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: rota-gateway-config
+              key: atlas-url
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

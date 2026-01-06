@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rota-gateway-config
+  namespace: rota
+data:
+  google-redirect-url: "https://api.rota.edu/auth/google/callback"
+  platform-url: "https://platform.rota.edu"
+  atlas-url: "https://atlas.rota.edu"
+  jwt-issuer: "rota-gateway"
+  jwt-audience: "rota-platform"
+  jwt-expiry-hours: "24"
