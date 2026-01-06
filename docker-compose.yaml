@@ -6,37 +6,65 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Server
       PORT: 8080
       ENV: development
+
+      # Google OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URL: http://localhost:8080/auth/google/callback
+
+      # JWT
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-min-32-chars}
       JWT_ISSUER: rota-gateway
       JWT_AUDIENCE: rota-platform
       JWT_EXPIRY_HOURS: 24
-      DATABASE_URL: postgresql://rota:rota@postgres:5432/rota_gateway
-      REDIS_URL: redis://redis:6379
+
+      # PostgreSQL (new config format)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: rota
+      POSTGRES_PASSWORD: rota
+      POSTGRES_DB: rota_main
+      POSTGRES_SSLMODE: disable
+
+      # Redis (new config format)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+
+      # Frontend URLs
       PLATFORM_URL: http://localhost:5173
       ATLAS_URL: http://localhost:5174
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - rota
 
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: rota_gateway
+      POSTGRES_DB: rota_main
       POSTGRES_USER: rota
       POSTGRES_PASSWORD: rota
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rota -d rota_main"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - rota
+    command: >
+      postgres
+      -c shared_preload_libraries=vector
 
   redis:
     image: redis:7-alpine
@@ -44,6 +72,11 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - rota
 
