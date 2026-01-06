@@ -21,11 +21,22 @@ type Config struct {
 	JWTAudience        string
 	JWTExpiryHours     int
 
-	// Database
+	// Database (deprecated - use Postgres fields)
 	DatabaseURL string
 
+	// PostgreSQL
+	PostgresHost     string
+	PostgresPort     int
+	PostgresUser     string
+	PostgresPassword string
+	PostgresDatabase string
+	PostgresSSLMode  string
+
 	// Redis
-	RedisURL string
+	RedisURL  string // deprecated - use Redis fields
+	RedisHost string
+	RedisPort int
+	RedisDB   int
 
 	// CORS
 	AllowedOrigins []string
@@ -43,6 +54,21 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid JWT_EXPIRY_HOURS: %w", err)
 	}
 
+	postgresPort, err := strconv.Atoi(getEnv("POSTGRES_PORT", "5432"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid POSTGRES_PORT: %w", err)
+	}
+
+	redisPort, err := strconv.Atoi(getEnv("REDIS_PORT", "6379"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_PORT: %w", err)
+	}
+
+	redisDB, err := strconv.Atoi(getEnv("REDIS_DB", "0"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_DB: %w", err)
+	}
+
 	cfg := &Config{
 		Port: port,
 		Env:  getEnv("ENV", "development"),
@@ -55,8 +81,22 @@ func Load() (*Config, error) {
 		JWTAudience:        getEnv("JWT_AUDIENCE", "rota-platform"),
 		JWTExpiryHours:     jwtExpiry,
 
+		// Legacy fields
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
+
+		// PostgreSQL config
+		PostgresHost:     getEnv("POSTGRES_HOST", "localhost"),
+		PostgresPort:     postgresPort,
+		PostgresUser:     getEnv("POSTGRES_USER", "rota"),
+		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
+		PostgresDatabase: getEnv("POSTGRES_DB", "rota_main"),
+		PostgresSSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+
+		// Redis config
+		RedisHost: getEnv("REDIS_HOST", "localhost"),
+		RedisPort: redisPort,
+		RedisDB:   redisDB,
 
 		AllowedOrigins: []string{
 			getEnv("PLATFORM_URL", "http://localhost:5173"),
@@ -85,8 +125,9 @@ func (c *Config) Validate() error {
 	if c.JWTSecret == "" {
 		return fmt.Errorf("JWT_SECRET is required")
 	}
-	if c.DatabaseURL == "" {
-		return fmt.Errorf("DATABASE_URL is required")
+	// Postgres password required in production
+	if c.IsProd() && c.PostgresPassword == "" {
+		return fmt.Errorf("POSTGRES_PASSWORD is required in production")
 	}
 	return nil
 }
